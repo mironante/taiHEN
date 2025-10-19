@@ -372,7 +372,7 @@ static int start_preloaded_modules_patched(SceUID pid) {
     return ret;
   }
 
-  ksceKernelGetProcessTitleId(pid, titleid, 32);
+  ksceKernelSysrootGetProcessTitleId(pid, titleid, 32);
   LOG("title started: %s, pid: %x, loading plugins...", titleid, pid);
 
   taiLoadPluginsForTitleForKernel(pid, titleid, 0);

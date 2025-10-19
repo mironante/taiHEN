@@ -6,7 +6,7 @@
  * of the MIT license.  See the LICENSE file for details.
  */
 #include <psp2kern/types.h>
-#include <psp2kern/sblacmgr.h>
+#include <psp2kern/kernel/acmgr.h>
 #include <psp2kern/kernel/cpu.h>
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/sysmem.h>

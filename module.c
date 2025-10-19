@@ -186,7 +186,7 @@ static int find_int_for_user(SceUID pid, uintptr_t src, uint32_t needle, size_t 
     return 0;
   }
   size = end-src;
-  flags = ksceKernelCpuDisableInterrupts();
+  flags = ksceKernelCpuSuspendIntr();
   ksceKernelCpuSaveContext(my_context);
   ret = ksceKernelGetPidContext(pid, &other_context);
   if (ret >= 0) {
@@ -200,7 +200,7 @@ static int find_int_for_user(SceUID pid, uintptr_t src, uint32_t needle, size_t 
     }
   }
   ksceKernelCpuRestoreContext(my_context);
-  ksceKernelCpuEnableInterrupts(flags);
+  ksceKernelCpuResumeIntr(flags);
   if (ret < 0) {
     LOG("Error trying to get context for %x", pid);
     count = ret;

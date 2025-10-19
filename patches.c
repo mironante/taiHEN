@@ -180,25 +180,25 @@ void cache_flush(SceUID pid, uintptr_t vma, size_t len) {
   LOG("cache flush: vma %p, vma_align %p, len %x", vma, vma_align, len);
 
   if (pid == KERNEL_PID) {
-    ksceKernelCpuDcacheWritebackInvalidateRange((void *)vma_align, len);
-    ksceKernelCpuIcacheAndL2WritebackInvalidateRange((void *)vma_align, len);
+    ksceKernelL1DcacheCleanInvalidateRange((void *)vma_align, len);
+    ksceKernelIcacheInvalidateRange((void *)vma_align, len);
     hex_dump(vma_align, (char *)vma_align, len);
   } else {
     // TODO: Take care of SHARED_PID
-    flags = ksceKernelCpuDisableInterrupts();
+    flags = ksceKernelCpuSuspendIntr();
     ksceKernelCpuSaveContext(my_context);
     ret = ksceKernelGetPidContext(pid, &other_context);
     if (ret >= 0) {
       ksceKernelCpuRestoreContext(other_context);
       asm volatile ("mrc p15, 0, %0, c3, c0, 0" : "=r" (dacr));
       asm volatile ("mcr p15, 0, %0, c3, c0, 0" :: "r" (0x15450FC3));
-      ksceKernelCpuDcacheWritebackInvalidateRange((void *)vma_align, len);
-      ksceKernelCpuIcacheAndL2WritebackInvalidateRange((void *)vma_align, len);
+      ksceKernelL1DcacheCleanInvalidateRange((void *)vma_align, len);
+      ksceKernelIcacheInvalidateRange((void *)vma_align, len);
       hex_dump(vma_align, (char *)vma_align, len);
       asm volatile ("mcr p15, 0, %0, c3, c0, 0" :: "r" (dacr));
     }
     ksceKernelCpuRestoreContext(my_context);
-    ksceKernelCpuEnableInterrupts(flags);
+    ksceKernelCpuResumeIntr(flags);
     LOG("sceKernelSwitchVmaForPid(%d): 0x%08X\n", pid, ret);
   }
   asm volatile ("isb" ::: "memory");
@@ -238,7 +238,7 @@ static int do_hooking(void *args) {
   if (uargs->pid == KERNEL_PID) {
     ret = substitute_hook_functions(uargs->hook, 1, uargs->saved, SUBSTITUTE_RELAXED);
   } else {
-    flags = ksceKernelCpuDisableInterrupts();
+    flags = ksceKernelCpuSuspendIntr();
     ksceKernelCpuSaveContext(my_context);
     ret = ksceKernelGetPidContext(uargs->pid, &other_context);
     if (ret >= 0) {
@@ -249,7 +249,7 @@ static int do_hooking(void *args) {
       asm volatile ("mcr p15, 0, %0, c3, c0, 0" :: "r" (dacr));
     }
     ksceKernelCpuRestoreContext(my_context);
-    ksceKernelCpuEnableInterrupts(flags);
+    ksceKernelCpuResumeIntr(flags);
   }
   return ret;
 }
@@ -342,8 +342,8 @@ static int tai_unhook_function(void *saved) {
 static int tai_force_memcpy(SceUID dst_pid, void *dst, const void *src, size_t size) {
   int ret;
   if (dst_pid == KERNEL_PID) {
-      ret = ksceKernelCpuUnrestrictedMemcpy(dst, src, size);
-      LOG("ksceKernelCpuUnrestrictedMemcpy(%p, %p, 0x%08X): 0x%08X", dst, src, size, ret);
+      ret = ksceKernelDomainTextMemcpy(dst, src, size);
+      LOG("ksceKernelDomainTextMemcpy(%p, %p, 0x%08X): 0x%08X", dst, src, size, ret);
   } else {
       ret = ksceKernelRxMemcpyKernelToUserForPid(dst_pid, (uintptr_t)dst, src, size);
       LOG("ksceKernelRxMemcpyKernelToUserForPid(%x, %p, %p, 0x%08X): 0x%08X", dst_pid, dst, src, size, ret);
